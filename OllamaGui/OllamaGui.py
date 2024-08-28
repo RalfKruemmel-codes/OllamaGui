@@ -9,7 +9,6 @@ from kivy.core.window import Window
 from kivy.logger import Logger  # Für Protokollierung
 from ollama import chat
 
-
 class OllamaChatApp(App):
     """
     Eine Kivy-Anwendung für die Interaktion mit dem Ollama-Chat-Modell.
@@ -24,7 +23,7 @@ class OllamaChatApp(App):
         Window.size = (800, 600)
 
         # Startet den Ollama-Server
-        self.ollama_process = self.start_ollama_serve()
+        self.ollama_process = self.start_ollama_server_process()
 
         layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
 
@@ -63,7 +62,7 @@ class OllamaChatApp(App):
 
         return layout
 
-    def start_ollama_serve(self):
+    def start_ollama_server_process(self):
         """
         Startet den Ollama-Server-Prozess im Hintergrund.
 
@@ -77,10 +76,10 @@ class OllamaChatApp(App):
         except Exception as e:
             error_message = f"Ein Fehler ist beim Starten des Servers aufgetreten: {str(e)}"
             Logger.error(f"OllamaChatApp: {error_message}")
-            self.response_textbox.text = error_message
+            self.display_error(error_message)
             return None
 
-    def stop_ollama_serve(self):
+    def stop_ollama_server_process(self):
         """
         Beendet den Ollama-Server-Prozess, falls er läuft.
         """
@@ -99,15 +98,15 @@ class OllamaChatApp(App):
         """
         Holt die Antwort von der ollama API und zeigt sie in der GUI an.
         """
-        user_input = self.user_input.text.strip()
+        user_input = self.user_input.text.strip()  # Validierung der Eingabe
         selected_model = self.model_spinner.text
 
         if selected_model == "Wähle ein Modell":
-            self.response_textbox.text = "Bitte wähle ein Modell aus."
+            self.display_error("Bitte wähle ein Modell aus.")
             return
 
         if not user_input:
-            self.response_textbox.text = "Bitte gib eine Frage ein."
+            self.display_error("Bitte gib eine Frage ein.")
             return
 
         self.response_textbox.text = "Antwort wird geladen..."
@@ -118,27 +117,40 @@ class OllamaChatApp(App):
 
             for part in chat(selected_model, messages=messages, stream=True):
                 response_text += part['message']['content']
-                self.response_textbox.text = response_text  # Aktualisiert die Antwort in der GUI
 
+            self.display_response(response_text)
             Logger.info("OllamaChatApp: Antwort erfolgreich empfangen und angezeigt")
         except Exception as e:
             error_message = f"Ein Fehler ist aufgetreten: {str(e)}"
             Logger.error(f"OllamaChatApp: {error_message}")
-            self.response_textbox.text = error_message
+            self.display_error(error_message)
+
+    def display_response(self, response_text):
+        """
+        Zeigt die erhaltene Antwort im GUI an.
+        """
+        self.response_textbox.text = response_text
+
+    def display_error(self, error_message):
+        """
+        Zeigt eine Fehlermeldung im GUI an.
+        """
+        self.response_textbox.text = error_message
 
     def on_stop(self):
         """
         Beendet den Ollama-Server beim Schließen der Anwendung.
         """
-        self.stop_ollama_serve()
+        self.stop_ollama_server_process()
 
+def run_async_app(app):
+    """
+    Initialisiert und startet den AsyncIO-Event-Loop für die Kivy-App.
+    """
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(app.async_run(async_lib='asyncio'))
 
 if __name__ == "__main__":
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-
-    asyncio.ensure_future(OllamaChatApp().async_run(async_lib='asyncio'))
-    loop.run_forever()
+    app = OllamaChatApp()
+    run_async_app(app)
