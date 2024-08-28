@@ -68,7 +68,7 @@ cd OllamaGui
 
 ```python
 self.model_spinner = Spinner(
-    text="Wähle ein Modell",
+    text="mistral",  # Standardmäßig auf ein gültiges Modell setzen
     values=("mistral", "llama3.1:8b", "andere Modelle..."),
     size_hint=(1, 0.1)
 )
@@ -97,6 +97,9 @@ python OllamaGui.py
 Eine Übersicht über die wichtigsten Dateien und deren Zweck:
 
 - `OllamaGui.py`: Hauptskript für die Kivy-Anwendung.
+- `response_handler.py`: Enthält die `OllamaResponseHandler`-Klasse, die für die Kommunikation mit der Ollama-API zuständig ist.
+- `OllamaGui.kv`: Definiert das Layout der Anwendung in der Kivy-Language.
+- `test_ollama_chat.py`: Enthält Unit-Tests für die Hauptfunktionen der Anwendung.
 - `README.md`: Diese Datei, die Informationen zur Anwendung enthält.
 - `.gitignore`: Enthält Dateien und Ordner, die vom Versionskontrollsystem ignoriert werden sollen.
 
@@ -106,9 +109,10 @@ Eine Übersicht über die wichtigsten Dateien und deren Zweck:
 
 - **`OllamaChatApp`**: Die Hauptklasse der Anwendung, die von `kivy.app.App` erbt und das GUI sowie die Logik zur Kommunikation mit dem Ollama-Server enthält.
 - **`start_ollama_server_process()`**: Startet den Ollama-Server-Prozess im Hintergrund.
-- **`get_response()`**: Sendet eine Benutzereingabe an das ausgewählte Modell und zeigt die Antwort im GUI an.
+- **`get_response_async()`**: Sendet eine Benutzereingabe asynchron an das ausgewählte Modell und zeigt die Antwort im GUI an.
 - **`display_response(response_text)`**: Zeigt die erhaltene Antwort im GUI an.
 - **`display_error(error_message)`**: Zeigt Fehlermeldungen im GUI an.
+- **`OllamaResponseHandler`**: Eine separate Klasse, die die Kommunikation mit der Ollama-API übernimmt.
 
 ### Protokollierung (Logging)
 
@@ -127,7 +131,7 @@ from OllamaGui import OllamaChatApp
 
 if __name__ == "__main__":
     app = OllamaChatApp()
-    app.run()
+    asyncio.run(app.async_run(async_lib='asyncio'))
 ```
 
 ## Fehlerbehebung
