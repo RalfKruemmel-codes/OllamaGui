@@ -1,0 +1,29 @@
+<OllamaChatApp>:
+    BoxLayout:
+        orientation: 'vertical'
+        padding: 10
+        spacing: 10
+
+        Spinner:
+            id: model_spinner
+            text: "mistral"  # Standardmäßig auf ein gültiges Modell setzen
+            values: ["mistral", "llama3.1:8b", "andere Modelle..."]
+            size_hint: (1, 0.1)
+
+        TextInput:
+            id: user_input
+            hint_text: "Gib deine Frage ein..."
+            multiline: True
+            size_hint: (1, 0.3)
+
+        Button:
+            text: "Jetzt Fragen"
+            size_hint: (1, 0.1)
+            on_press: app.on_submit()
+
+        TextInput:
+            id: response_textbox
+            text: "Antwort wird hier angezeigt..."
+            multiline: True
+            readonly: True
+            size_hint: (1, 0.5)
