@@ -6,8 +6,8 @@ from kivy.uix.textinput import TextInput
 from kivy.uix.button import Button
 from kivy.uix.spinner import Spinner
 from kivy.core.window import Window
-from kivy.logger import Logger  # Für Protokollierung
-from ollama import chat
+from kivy.logger import Logger
+from response_handler import OllamaResponseHandler
 
 
 class OllamaChatApp(App):
@@ -24,13 +24,13 @@ class OllamaChatApp(App):
         Window.size = (800, 600)
 
         # Startet den Ollama-Server
-        self.ollama_process = self.start_ollama_serve()
+        self.ollama_process = self.start_ollama_server_process()
 
         layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
 
         # Dropdown für Modell-Auswahl
         self.model_spinner = Spinner(
-            text="Wähle ein Modell",
+            text="mistral",  # Standardmäßig auf ein gültiges Modell setzen
             values=("mistral", "llama3.1:8b", "andere Modelle..."),
             size_hint=(1, 0.1)
         )
@@ -61,9 +61,12 @@ class OllamaChatApp(App):
         )
         layout.add_widget(self.response_textbox)
 
+        # Initialisiere den Response-Handler
+        self.response_handler = None
+
         return layout
 
-    def start_ollama_serve(self):
+    def start_ollama_server_process(self):
         """
         Startet den Ollama-Server-Prozess im Hintergrund.
 
@@ -74,13 +77,15 @@ class OllamaChatApp(App):
             process = subprocess.Popen(["ollama", "serve"])
             Logger.info("OllamaChatApp: Ollama-Server erfolgreich gestartet")
             return process
+        except FileNotFoundError:
+            error_message = "Ollama-Server konnte nicht gefunden werden. Bitte überprüfen Sie die Installation."
+            self.handle_error(error_message)
         except Exception as e:
-            error_message = f"Ein Fehler ist beim Starten des Servers aufgetreten: {str(e)}"
-            Logger.error(f"OllamaChatApp: {error_message}")
-            self.response_textbox.text = error_message
-            return None
+            error_message = f"Ein unerwarteter Fehler ist aufgetreten: {str(e)}"
+            self.handle_error(error_message)
+        return None
 
-    def stop_ollama_serve(self):
+    def stop_ollama_server_process(self):
         """
         Beendet den Ollama-Server-Prozess, falls er läuft.
         """
@@ -93,52 +98,60 @@ class OllamaChatApp(App):
         """
         Startet die Verarbeitung der Benutzereingabe.
         """
-        self.get_response()
+        asyncio.ensure_future(self.get_response_async())
 
-    def get_response(self):
+    async def get_response_async(self):
         """
         Holt die Antwort von der ollama API und zeigt sie in der GUI an.
         """
-        user_input = self.user_input.text.strip()
+        user_input = self.user_input.text.strip()  # Validierung der Eingabe
         selected_model = self.model_spinner.text
 
         if selected_model == "Wähle ein Modell":
-            self.response_textbox.text = "Bitte wähle ein Modell aus."
+            self.display_error("Bitte wähle ein gültiges Modell aus.")
             return
 
         if not user_input:
-            self.response_textbox.text = "Bitte gib eine Frage ein."
+            self.display_error("Bitte gib eine Frage ein.")
             return
 
         self.response_textbox.text = "Antwort wird geladen..."
 
-        try:
-            messages = [{'role': 'user', 'content': user_input}]
-            response_text = ""
+        # Initialisiere den Response-Handler mit dem ausgewählten Modell
+        self.response_handler = OllamaResponseHandler(selected_model)
 
-            for part in chat(selected_model, messages=messages, stream=True):
-                response_text += part['message']['content']
-                self.response_textbox.text = response_text  # Aktualisiert die Antwort in der GUI
+        response = await self.response_handler.get_response_async(user_input)
+        if response:
+            self.display_response(response)
+        else:
+            self.handle_error("Fehler bei der Antwortverarbeitung")
 
-            Logger.info("OllamaChatApp: Antwort erfolgreich empfangen und angezeigt")
-        except Exception as e:
-            error_message = f"Ein Fehler ist aufgetreten: {str(e)}"
-            Logger.error(f"OllamaChatApp: {error_message}")
-            self.response_textbox.text = error_message
+    def display_response(self, response_text):
+        """
+        Zeigt die erhaltene Antwort im GUI an.
+        """
+        self.response_textbox.text = response_text
+
+    def display_error(self, error_message):
+        """
+        Zeigt eine Fehlermeldung im GUI an.
+        """
+        self.response_textbox.text = error_message
+
+    def handle_error(self, error_message):
+        """
+        Protokolliert und zeigt Fehlermeldungen im GUI an.
+        """
+        Logger.error(f"OllamaChatApp: {error_message}")
+        self.display_error(error_message)
 
     def on_stop(self):
         """
         Beendet den Ollama-Server beim Schließen der Anwendung.
         """
-        self.stop_ollama_serve()
+        self.stop_ollama_server_process()
 
 
 if __name__ == "__main__":
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-
-    asyncio.ensure_future(OllamaChatApp().async_run(async_lib='asyncio'))
-    loop.run_forever()
+    app = OllamaChatApp()
+    asyncio.run(app.async_run(async_lib='asyncio'))
