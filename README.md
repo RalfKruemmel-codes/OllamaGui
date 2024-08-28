@@ -66,7 +66,7 @@ Falls du auf Probleme stößt:
    - Stelle sicher, dass alle Abhängigkeiten korrekt installiert sind.
 
 3. **Weitere Unterstützung:**
-   - Öffne ein Issue auf GitHub oder kontaktiere mich über [deine E-Mail].
+   - Öffne ein Issue auf GitHub oder kontaktiere mich über [ralf.kruemmel-python@outlook.de].
 
 ## Mitwirkende
 
